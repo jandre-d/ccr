@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Grep(*)",
+      "Glob(*)",
+      "LS(*)"
+    ],
+    "deny": [
+      "Bash(*)",
+      "WebFetch(*)"
+    ],
+    "defaultMode": "default"
+  }
+}

@@ -1,0 +1,9 @@
+*
+!*/
+!.gitignore
+!CLAUDE.md
+!Containerfile
+!LICENSE
+!Makefile
+!README.md
+!settings.json
