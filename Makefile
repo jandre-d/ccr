@@ -26,8 +26,6 @@ run: argcheck build
 		-v "$(MOUNT_SRC):/project:Z" \
 		-v ./.claude:/root/.claude:Z \
 		-v ./.claude.json:/root/.claude.json:Z \
-		-v ./CLAUDE.md:/project/CLAUDE.md:Z \
-		-v ./settings.json:/root/.claude/settings.json:Z \
 		claude-code claude
 
 resume: argcheck build
@@ -35,6 +33,4 @@ resume: argcheck build
 		-v "$(MOUNT_SRC):/project:Z" \
 		-v ./.claude:/root/.claude:Z \
 		-v ./.claude.json:/root/.claude.json:Z \
-		-v ./CLAUDE.md:/project/CLAUDE.md:Z \
-		-v ./settings.json:/root/.claude/settings.json:Z \
 		claude-code claude --resume
