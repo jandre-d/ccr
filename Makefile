@@ -24,15 +24,15 @@ argcheck:
 run: argcheck build
 	clear
 	podman run --rm -it --name claude-code \
-		-v "$(MOUNT_SRC):/project:Z" \
-		-v ./.claude:/root/.claude:Z \
-		-v ./.claude.json:/root/.claude.json:Z \
+		-v "$(MOUNT_SRC):/project:z" \
+		-v ./.claude:/root/.claude:z \
+		-v ./.claude.json:/root/.claude.json:z \
 		claude-code claude
 
 resume: argcheck build
 	clear
 	podman run --rm --replace -it --name claude-code \
-		-v "$(MOUNT_SRC):/project:Z" \
-		-v ./.claude:/root/.claude:Z \
-		-v ./.claude.json:/root/.claude.json:Z \
+		-v "$(MOUNT_SRC):/project:z" \
+		-v ./.claude:/root/.claude:z \
+		-v ./.claude.json:/root/.claude.json:z \
 		claude-code claude --resume
