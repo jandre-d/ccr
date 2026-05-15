@@ -38,6 +38,7 @@ argcheck:
 	fi
 	@mkdir -p "$(STATE_DIR)/.claude"
 	@[ -f "$(STATE_DIR)/.claude.json" ] || echo '{}' > "$(STATE_DIR)/.claude.json"
+	@[ -f "$(STATE_DIR)/.claude/CLAUDE.md" ] || cp .claude/CLAUDE.md "$(STATE_DIR)/.claude/CLAUDE.md"
 
 network:
 	@podman network exists $(NETWORK) || podman network create $(NETWORK)
