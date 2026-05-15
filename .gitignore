@@ -1,0 +1,14 @@
+# Ignore everything
+*
+
+# Allow specific top-level files
+!.gitignore
+!Containerfile
+!LICENSE
+!Makefile
+!README.md
+
+# Allow the .claude directory and specific files inside it
+!.claude/
+.claude/*
+!.claude/settings.json
