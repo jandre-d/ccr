@@ -2,7 +2,7 @@
 .PHONY: build new resume argcheck list stop network neo4j neo4j-stop neo4j-wipe
 
 SRC       ?=
-INSTANCE  ?= $(shell basename $(SRC))
+INSTANCE  ?= $(if $(SRC),$(shell basename $(SRC)))
 STATE_DIR := .state/$(INSTANCE)
 NETWORK   := ccr-net
 NEO4J_VOL := ccr-neo4j-data
