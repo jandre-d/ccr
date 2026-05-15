@@ -8,7 +8,21 @@ NETWORK   := ccr-net
 NEO4J_VOL := ccr-neo4j-data
 
 all:
-	@echo "Usage: make new SRC=/path/to/project [INSTANCE=name]"
+	@echo "Usage: make <target> [SRC=/path/to/project] [INSTANCE=name]"
+	@echo ""
+	@echo "Sessions:"
+	@echo "  new SRC=...        Start a new Claude session"
+	@echo "  resume SRC=...     Resume the last session"
+	@echo "  list               Show running Claude instances"
+	@echo "  stop INSTANCE=...  Stop a specific instance"
+	@echo ""
+	@echo "Neo4j:"
+	@echo "  neo4j              Start Neo4j (persistent data)"
+	@echo "  neo4j-stop         Stop Neo4j (data preserved)"
+	@echo "  neo4j-wipe         Delete all Neo4j data"
+	@echo ""
+	@echo "Build:"
+	@echo "  build              Build the Claude container image"
 
 build:
 	podman build -t claude-code -f Containerfile .
