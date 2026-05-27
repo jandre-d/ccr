@@ -1,11 +1,12 @@
 .ONESHELL:
-.PHONY: build new resume argcheck list stop network neo4j neo4j-stop neo4j-wipe
+.PHONY: build new resume argcheck list stop network neo4j neo4j-stop neo4j-wipe postgres postgres-stop postgres-wipe
 
 SRC       ?=
 INSTANCE  ?= $(if $(SRC),$(shell basename $(SRC)))
-STATE_DIR := .state/$(INSTANCE)
+INSTANCE_DIR := .instances/$(INSTANCE)
 NETWORK   := ccr-net
-NEO4J_VOL := ccr-neo4j-data
+NEO4J_VOL  := ccr-neo4j-data
+PG_VOL     := ccr-postgres-data
 
 all:
 	@echo "Usage: make <target> [SRC=/path/to/project] [INSTANCE=name]"
@@ -15,6 +16,11 @@ all:
 	@echo "  resume SRC=...     Resume the last session"
 	@echo "  list               Show running Claude instances"
 	@echo "  stop INSTANCE=...  Stop a specific instance"
+	@echo ""
+	@echo "PostgreSQL:"
+	@echo "  postgres            Start PostgreSQL (persistent data)"
+	@echo "  postgres-stop       Stop PostgreSQL (data preserved)"
+	@echo "  postgres-wipe       Delete all PostgreSQL data"
 	@echo ""
 	@echo "Neo4j:"
 	@echo "  neo4j              Start Neo4j (persistent data)"
@@ -37,24 +43,48 @@ argcheck:
 		exit 1
 	fi
 
-	mkdir -p "$(STATE_DIR)/.claude/projects"
-	mkdir -p "$(STATE_DIR)/.claude/todos"
+	mkdir -p "$(INSTANCE_DIR)/user-claude/projects"
+	mkdir -p "$(INSTANCE_DIR)/user-claude/todos"
 
-	# Seed state files on first run
-	if [ ! -f "$(STATE_DIR)/.claude.json" ]; then
-		echo '{}' > "$(STATE_DIR)/.claude.json"
+	# Seed instance files on first run
+	if [ ! -f "$(INSTANCE_DIR)/.claude.json" ]; then
+		echo '{}' > "$(INSTANCE_DIR)/.claude.json"
 	fi
 
-	if [ ! -f "$(STATE_DIR)/.claude/CLAUDE.md" ]; then
-		cp .claude/CLAUDE.md "$(STATE_DIR)/.claude/CLAUDE.md"
+	if [ ! -f "$(INSTANCE_DIR)/user-claude/CLAUDE.md" ]; then
+		cp seed/CLAUDE.md "$(INSTANCE_DIR)/user-claude/CLAUDE.md"
 	fi
 
-	if [ ! -f "$(STATE_DIR)/.claude/settings.json" ]; then
-		cp .claude/settings.json "$(STATE_DIR)/.claude/settings.json"
+	if [ ! -f "$(INSTANCE_DIR)/user-claude/settings.json" ]; then
+		cp seed/settings.json "$(INSTANCE_DIR)/user-claude/settings.json"
+	fi
+
+	mkdir -p "$(INSTANCE_DIR)/project-claude"
+	if [ -d "$(SRC)/.claude" ]; then
+		cp -a -n "$(SRC)/.claude/." "$(INSTANCE_DIR)/project-claude/"
 	fi
 
 network:
 	@podman network exists $(NETWORK) || podman network create $(NETWORK)
+
+postgres: network
+	@podman container exists ccr-postgres && echo "PostgreSQL already running" || \
+	podman run -d --rm \
+		--name ccr-postgres \
+		--network $(NETWORK) \
+		-p 5432:5432 \
+		-e POSTGRES_USER=postgres \
+		-e POSTGRES_PASSWORD=devpassword \
+		-v $(PG_VOL):/var/lib/postgresql/data \
+		postgres:17
+
+postgres-stop:
+	@podman container exists ccr-postgres && podman stop ccr-postgres || echo "PostgreSQL not running"
+
+postgres-wipe:
+	@echo "Wiping PostgreSQL data volume..."
+	@podman container exists ccr-postgres && podman stop ccr-postgres || true
+	podman volume rm -f $(PG_VOL)
 
 neo4j: network
 	@podman container exists ccr-neo4j && echo "Neo4j already running" || \
@@ -80,10 +110,9 @@ new: argcheck build network
 		--userns=keep-id \
 		--network $(NETWORK) \
 		-v "$(SRC):/project:z" \
-		-v "./$(STATE_DIR)/.claude/projects:/home/claude/.claude/projects:z" \
-		-v "./$(STATE_DIR)/.claude/todos:/home/claude/.claude/todos:z" \
-		-v "./$(STATE_DIR)/.claude/CLAUDE.md:/home/claude/.claude/CLAUDE.md:z" \
-		-v "./$(STATE_DIR)/.claude.json:/home/claude/.claude.json:z" \
+		-v "./$(INSTANCE_DIR)/project-claude:/project/.claude:z" \
+		-v "./$(INSTANCE_DIR)/user-claude:/home/claude/.claude:z" \
+		-v "./$(INSTANCE_DIR)/.claude.json:/home/claude/.claude.json:z" \
 		claude-code claude
 
 resume: argcheck build network
@@ -92,10 +121,9 @@ resume: argcheck build network
 		--userns=keep-id \
 		--network $(NETWORK) \
 		-v "$(SRC):/project:z" \
-		-v "./$(STATE_DIR)/.claude/projects:/home/claude/.claude/projects:z" \
-		-v "./$(STATE_DIR)/.claude/todos:/home/claude/.claude/todos:z" \
-		-v "./$(STATE_DIR)/.claude/CLAUDE.md:/home/claude/.claude/CLAUDE.md:z" \
-		-v "./$(STATE_DIR)/.claude.json:/home/claude/.claude.json:z" \
+		-v "./$(INSTANCE_DIR)/project-claude:/project/.claude:z" \
+		-v "./$(INSTANCE_DIR)/user-claude:/home/claude/.claude:z" \
+		-v "./$(INSTANCE_DIR)/.claude.json:/home/claude/.claude.json:z" \
 		claude-code claude --resume
 
 list:

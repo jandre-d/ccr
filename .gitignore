@@ -8,8 +8,8 @@
 !Makefile
 !README.md
 
-# Allow the .claude directory and specific files inside it
-!.claude/
-.claude/*
-!.claude/settings.json
-!.claude/CLAUDE.md
+# Allow the seed directory (default configs for new sessions)
+!seed/
+seed/*
+!seed/settings.json
+!seed/CLAUDE.md

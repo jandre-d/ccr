@@ -1,6 +1,11 @@
 # ccr
 
-Run [Claude Code](https://docs.claude.com/en/docs/claude-code) in a Podman container. Supports running multiple instances in parallel, each with its own isolated history and config. Includes an optional Neo4j sibling container for testing Cypher queries.
+Run [Claude Code](https://docs.claude.com/en/docs/claude-code) in a Podman container. Supports running multiple instances in parallel, each with its own isolated history and config. Includes optional PostgreSQL and Neo4j sibling containers on a shared network.
+
+## Prerequisites
+
+- [Podman](https://podman.io/)
+- A valid Claude Code authentication (API key or OAuth)
 
 ## Usage
 
@@ -19,13 +24,26 @@ make new SRC=/path/to/project INSTANCE=a2
 ### Managing instances
 
 ```bash
+make build                           # build the container image
 make list                            # show running instances
 make stop INSTANCE=a1                # stop a specific instance
 ```
 
+### PostgreSQL
+
+A PostgreSQL 17 container can be run alongside Claude on a shared Podman network. Data persists in a named volume across restarts.
+
+```bash
+make postgres                        # start PostgreSQL (leave running)
+make postgres-stop                   # stop PostgreSQL, data preserved
+make postgres-wipe                   # delete all PostgreSQL data
+```
+
+From inside the Claude container, connect at `ccr-postgres:5432` with user `postgres` and password `devpassword`. From the host, connect at `localhost:5432`.
+
 ### Neo4j
 
-A Neo4j container can be run alongside Claude on a shared Podman network. Data persists in a named volume across restarts.
+A Neo4j 5.x container can be run alongside Claude on a shared Podman network. Data persists in a named volume across restarts.
 
 ```bash
 make neo4j                           # start Neo4j (leave running)
