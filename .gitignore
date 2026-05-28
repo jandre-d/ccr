@@ -13,3 +13,7 @@
 seed/*
 !seed/settings.json
 !seed/CLAUDE.md
+
+# Allow skills directory
+!skills/
+!skills/**

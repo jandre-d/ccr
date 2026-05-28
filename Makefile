@@ -113,6 +113,7 @@ new: argcheck build network
 		-v "./$(INSTANCE_DIR)/project-claude:/project/.claude:z" \
 		-v "./$(INSTANCE_DIR)/user-claude:/home/claude/.claude:z" \
 		-v "./$(INSTANCE_DIR)/.claude.json:/home/claude/.claude.json:z" \
+		-v "./skills:/home/claude/.claude/skills:ro,z" \
 		claude-code claude
 
 resume: argcheck build network
@@ -124,6 +125,7 @@ resume: argcheck build network
 		-v "./$(INSTANCE_DIR)/project-claude:/project/.claude:z" \
 		-v "./$(INSTANCE_DIR)/user-claude:/home/claude/.claude:z" \
 		-v "./$(INSTANCE_DIR)/.claude.json:/home/claude/.claude.json:z" \
+		-v "./skills:/home/claude/.claude/skills:ro,z" \
 		claude-code claude --resume
 
 list:
