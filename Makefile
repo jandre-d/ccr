@@ -1,138 +1,54 @@
-.ONESHELL:
-.PHONY: build new resume argcheck list stop network neo4j neo4j-stop neo4j-wipe postgres postgres-stop postgres-wipe
+SHELL    := bash
+IMAGE    := claude-code
+NETWORK  := ccr-net
+# Named after the full path so projects with the same folder name don't collide.
+INSTANCE := $(subst /,-,$(patsubst /%,%,$(abspath $(SRC))))
+CONFIG   := .instances/$(INSTANCE)/claude-home
 
-SRC       ?=
-INSTANCE  ?= $(if $(SRC),$(shell basename $(SRC)))
-INSTANCE_DIR := .instances/$(INSTANCE)
-NETWORK   := ccr-net
-NEO4J_VOL  := ccr-neo4j-data
-PG_VOL     := ccr-postgres-data
+RUN = podman run --rm -it --name "claude-code-$(INSTANCE)" \
+	--userns=keep-id:uid=1000,gid=1000 \
+	--network $(NETWORK) \
+	-v "$(abspath $(SRC)):/project:z" \
+	-v "./$(CONFIG):/home/claude/.claude:z" \
+	-v "./skills:/home/claude/.claude/skills:ro,z"
 
-all:
-	@echo "Usage: make <target> [SRC=/path/to/project] [INSTANCE=name]"
-	@echo ""
-	@echo "Sessions:"
-	@echo "  new SRC=...        Start a new Claude session"
-	@echo "  resume SRC=...     Resume the last session"
-	@echo "  list               Show running Claude instances"
-	@echo "  stop INSTANCE=...  Stop a specific instance"
-	@echo ""
-	@echo "PostgreSQL:"
-	@echo "  postgres            Start PostgreSQL (persistent data)"
-	@echo "  postgres-stop       Stop PostgreSQL (data preserved)"
-	@echo "  postgres-wipe       Delete all PostgreSQL data"
-	@echo ""
-	@echo "Neo4j:"
-	@echo "  neo4j              Start Neo4j (persistent data)"
-	@echo "  neo4j-stop         Stop Neo4j (data preserved)"
-	@echo "  neo4j-wipe         Delete all Neo4j data"
-	@echo ""
-	@echo "Build:"
-	@echo "  build              Build the Claude container image"
+.PHONY: help build image network init new resume
 
+help:
+	@echo "make new [SRC=/path/to/project]    start a new session (ask for a folder if SRC is omitted)"
+	@echo "make resume [SRC=/path/to/project] resume a previous session (pick a project if SRC is omitted)"
+	@echo "make build                         rebuild the image with the latest Claude Code"
+
+# --no-cache so every build installs the latest Claude Code.
 build:
-	podman build -t claude-code -f Containerfile .
+	podman build --no-cache -t $(IMAGE) .
 
-argcheck:
-	@if [ -z "$(SRC)" ]; then
-		echo "Error: pass a project path with make new SRC=/path/to/project"
-		exit 1
-	fi
-	if [ ! -d "$(SRC)" ]; then
-		echo "Error: directory not found: $(SRC)"
-		exit 1
-	fi
+# Build only if the image doesn't exist yet.
+image:
+	podman image exists $(IMAGE) || $(MAKE) build
 
-	mkdir -p "$(INSTANCE_DIR)/user-claude/projects"
-	mkdir -p "$(INSTANCE_DIR)/user-claude/todos"
-
-	# Seed instance files on first run
-	if [ ! -f "$(INSTANCE_DIR)/.claude.json" ]; then
-		echo '{}' > "$(INSTANCE_DIR)/.claude.json"
-	fi
-
-	if [ ! -f "$(INSTANCE_DIR)/user-claude/CLAUDE.md" ]; then
-		cp seed/CLAUDE.md "$(INSTANCE_DIR)/user-claude/CLAUDE.md"
-	fi
-
-	if [ ! -f "$(INSTANCE_DIR)/user-claude/settings.json" ]; then
-		cp seed/settings.json "$(INSTANCE_DIR)/user-claude/settings.json"
-	fi
-
-	mkdir -p "$(INSTANCE_DIR)/project-claude"
-	if [ -d "$(SRC)/.claude" ]; then
-		cp -a -n "$(SRC)/.claude/." "$(INSTANCE_DIR)/project-claude/"
-	fi
-
+# Other containers can join this network to be reachable by name.
 network:
-	@podman network exists $(NETWORK) || podman network create $(NETWORK)
+	podman network create --ignore $(NETWORK)
 
-postgres: network
-	@podman container exists ccr-postgres && echo "PostgreSQL already running" || \
-	podman run -d --rm \
-		--name ccr-postgres \
-		--network $(NETWORK) \
-		-p 5432:5432 \
-		-e POSTGRES_USER=postgres \
-		-e POSTGRES_PASSWORD=devpassword \
-		-v $(PG_VOL):/var/lib/postgresql/data \
-		postgres:17
+init:
+	@test -d "$(SRC)" || { echo "Error: SRC must be a directory, got '$(SRC)'"; exit 1; }
+	mkdir -p $(CONFIG)
+	test -f $(CONFIG)/CLAUDE.md || cp seed/CLAUDE.md $(CONFIG)/
+	test -f $(CONFIG)/settings.json || cp seed/settings.json $(CONFIG)/
+	echo "$(abspath $(SRC))" > .instances/$(INSTANCE)/src
 
-postgres-stop:
-	@podman container exists ccr-postgres && podman stop ccr-postgres || echo "PostgreSQL not running"
+# Without SRC, ask for a folder under ~ (tab completes).
+new: $(if $(SRC),init image network)
+ifdef SRC
+	$(RUN) $(IMAGE)
+else
+	@cd ~ && read -e -p "Project folder: ~/" dir && $(MAKE) -C $(CURDIR) new SRC="$$HOME/$$dir"
+endif
 
-postgres-wipe:
-	@echo "Wiping PostgreSQL data volume..."
-	@podman container exists ccr-postgres && podman stop ccr-postgres || true
-	podman volume rm -f $(PG_VOL)
-
-neo4j: network
-	@podman container exists ccr-neo4j && echo "Neo4j already running" || \
-	podman run -d --rm \
-		--name ccr-neo4j \
-		--network $(NETWORK) \
-		-p 7474:7474 -p 7687:7687 \
-		-e NEO4J_AUTH=neo4j/devpassword \
-		-v $(NEO4J_VOL):/data \
-		neo4j:5
-
-neo4j-stop:
-	@podman container exists ccr-neo4j && podman stop ccr-neo4j || echo "Neo4j not running"
-
-neo4j-wipe:
-	@echo "Wiping Neo4j data volume..."
-	@podman container exists ccr-neo4j && podman stop ccr-neo4j || true
-	podman volume rm -f $(NEO4J_VOL)
-
-new: argcheck build network
-	clear
-	podman run --rm -it --name "claude-code-$(INSTANCE)" \
-		--userns=keep-id \
-		--network $(NETWORK) \
-		-v "$(SRC):/project:z" \
-		-v "./$(INSTANCE_DIR)/project-claude:/project/.claude:z" \
-		-v "./$(INSTANCE_DIR)/user-claude:/home/claude/.claude:z" \
-		-v "./$(INSTANCE_DIR)/.claude.json:/home/claude/.claude.json:z" \
-		-v "./skills:/home/claude/.claude/skills:ro,z" \
-		claude-code claude
-
-resume: argcheck build network
-	clear
-	podman run --rm --replace -it --name "claude-code-$(INSTANCE)" \
-		--userns=keep-id \
-		--network $(NETWORK) \
-		-v "$(SRC):/project:z" \
-		-v "./$(INSTANCE_DIR)/project-claude:/project/.claude:z" \
-		-v "./$(INSTANCE_DIR)/user-claude:/home/claude/.claude:z" \
-		-v "./$(INSTANCE_DIR)/.claude.json:/home/claude/.claude.json:z" \
-		-v "./skills:/home/claude/.claude/skills:ro,z" \
-		claude-code claude --resume
-
-list:
-	podman ps --filter "name=claude-code-" --format "table {{.Names}}\t{{.Status}}\t{{.Mounts}}"
-
-stop:
-	@if [ -z "$(INSTANCE)" ]; then \
-		echo "Error: pass INSTANCE=name"; exit 1; \
-	fi
-	podman stop "claude-code-$(INSTANCE)"
+resume: $(if $(SRC),init image network)
+ifdef SRC
+	$(RUN) $(IMAGE) --resume
+else
+	@select src in $$(cat .instances/*/src); do $(MAKE) resume SRC=$$src; break; done
+endif

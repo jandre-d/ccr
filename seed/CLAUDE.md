@@ -1,52 +1,44 @@
 # Environment
 
-You are running inside a Podman container based on Ubuntu 24.04.
+Podman container, Ubuntu 24.04.
 
-Do not explore git history (git log, git blame, etc.) unless explicitly asked.
-Do not speculatively explore files or run commands to gather context. Only read files and run commands when directly needed for the task at hand.
+Keep code simple and readable. Rely on defaults rather than spelling out what a tool already does.
+
+Do not explore git history unless explicitly asked.
+Do not speculatively explore files or run commands. Only read files and run commands when directly needed for the task.
 
 ## Filesystem
 
-The project is mounted at `/project` (read-write). Everything outside `/project` is ephemeral and discarded when the container exits.
-
-## Tools
-
-- Python 3.12 with `pip` and `venv`
-- Go 1.24 with gopls, delve, staticcheck, goimports, gofumpt, golangci-lint, air, goose
-- `git`, `ripgrep`, `jq`, `curl`, `psql`, `poppler-utils`
-- C build toolchain (`build-essential`, `python3-dev`)
+The project is at `/project` (read-write). Everything else is ephemeral.
 
 ## Python
 
-Ubuntu 24.04 enforces PEP 668 — `pip install` outside a virtualenv will fail. Always use a venv:
+`pip install` outside a venv will fail (PEP 668). Always use a venv:
 
     python3 -m venv .venv
     . .venv/bin/activate
     pip install -r requirements.txt
 
-## PostgreSQL
+## Other tools
 
-Optional sibling container on the same Podman network. Not started automatically — run `make postgres` from the host.
+`git`, `ripgrep`, `jq`, `curl`, `unzip`, `pdftotext`
 
-- **Host:** `ccr-postgres`
-- **Port:** `5432`
-- **User:** `postgres`
-- **Password:** `devpassword`
-- **From host:** `localhost:5432`
+Anything else: `sudo apt-get install` (passwordless, lost on exit).
 
-Data persists in a named volume. Wipe with `make postgres-wipe` from the host.
+## PDFs and notebooks
 
-## Neo4j
+Read a PDF with `pdftotext file.pdf -` rather than the Read tool. Reading it
+directly renders every page as an image and costs far more tokens. `pdfinfo` gives
+the page count and `pdftoppm` renders a single page when a figure matters.
 
-Optional sibling container on the same Podman network. Not started automatically — run `make neo4j` from the host.
-
-- **Bolt URI:** `bolt://ccr-neo4j:7687`
-- **User:** `neo4j`
-- **Password:** `devpassword`
-- **Browser UI (from host):** `http://localhost:7474`
-
-Data persists in a named volume. Wipe with `make neo4j-wipe` from the host.
+Read a notebook's code alone with
+`jq -r '.cells[] | select(.cell_type=="code") | .source | join("")' nb.ipynb`.
+Embedded outputs make the raw file far larger than the code.
 
 ## Network
 
-Outbound internet access is available. Database containers are reachable by hostname (`ccr-postgres`, `ccr-neo4j`).
+Outbound internet access is available.
+
+Podman is not available in here, so you cannot start a container yourself. If you
+need one, ask the user to run it on the host with `--network ccr-net`. It is then
+reachable from here by its container name, for example `ccr-postgres:5432`.

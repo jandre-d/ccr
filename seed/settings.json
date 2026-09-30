@@ -1,20 +1,12 @@
 {
+  "model": "opus",
+  "effortLevel": "high",
   "permissions": {
     "defaultMode": "bypassPermissions",
-    "allow": [
-      "Bash(*)",
-      "Edit(*)",
-      "Write(*)",
-      "Read(*)",
-      "WebFetch(*)",
-      "WebSearch"
-    ],
     "deny": [
       "Read(.git/**)",
       "Edit(.git/**)",
       "Write(.git/**)"
     ]
-  },
-  "model": "claude-opus-4-6",
-  "effortLevel": "high"
+  }
 }
