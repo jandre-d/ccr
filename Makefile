@@ -33,7 +33,7 @@ network:
 
 init:
 	@test -d "$(SRC)" || { echo "Error: SRC must be a directory, got '$(SRC)'"; exit 1; }
-	mkdir -p $(CONFIG)
+	mkdir -p $(CONFIG) skills
 	test -f $(CONFIG)/CLAUDE.md || cp seed/CLAUDE.md $(CONFIG)/
 	test -f $(CONFIG)/settings.json || cp seed/settings.json $(CONFIG)/
 	echo "$(abspath $(SRC))" > .instances/$(INSTANCE)/src
