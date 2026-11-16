@@ -1,12 +1,12 @@
 {
-  "model": "opus",
-  "effortLevel": "high",
+  "model": "claude-opus-5-5",
+  "effortLevel": "medium",
+  "skipDangerousModePermissionPrompt": true,
   "permissions": {
     "defaultMode": "bypassPermissions",
     "deny": [
       "Read(.git/**)",
-      "Edit(.git/**)",
-      "Write(.git/**)"
+      "Edit(.git/**)"
     ]
   }
 }
